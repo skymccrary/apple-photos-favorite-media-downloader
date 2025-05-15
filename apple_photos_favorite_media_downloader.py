@@ -57,29 +57,38 @@ def download_hearted_media(output_folder, date_range):
 
     # Export each favorited item with progress bar
     for index, photo in enumerate(tqdm(favorites, desc="Progress"), start=1):
-        # Get original extension
-        _, ext = os.path.splitext(photo.original_filename)
-        # Create sequential filename with padded numbers and date range
-        new_filename = f"{index:03d}{date_suffix}{ext}"
-        export_path = output_path / new_filename
-
         try:
-            # Export the original media
-            photo.export(dest=str(output_path), filename=new_filename, use_photos_export=True)
+            # Get original extension
+            _, ext = os.path.splitext(photo.original_filename)
+            # Create sequential filename with padded numbers and date range
+            new_filename = f"{index:03d}{date_suffix}{ext}"
+            
+            # Export the original photo/video
+            export_info = photo.export(
+                dest=str(output_path),
+                filename=new_filename,
+                live_photo=True,  # This ensures Live Photo components are exported
+                use_photos_export=True
+            )
             print(f"Exported image: {new_filename}")
 
-            # Check if the photo has a Live Photo video
-            if photo.live_photo and photo.path_live_photo:
-                # Define export path for the Live Photo video with same sequential number
-                live_photo_filename = f"{index:03d}{date_suffix}_live.mov"
-                live_photo_export_path = output_path / live_photo_filename
-
-                # Copy the Live Photo video
-                shutil.copy2(photo.path_live_photo, live_photo_export_path)
-                print(f"Exported Live Photo video: {live_photo_filename}")
+            # Handle Live Photo video component
+            if photo.live_photo:
+                # Get the video component path
+                video_path = photo.path_live_photo
+                if video_path and os.path.exists(video_path):
+                    # Create filename for Live Photo video
+                    live_photo_filename = f"{index:03d}{date_suffix}_live.mov"
+                    live_photo_export_path = output_path / live_photo_filename
+                    
+                    # Copy the Live Photo video component
+                    shutil.copy2(video_path, live_photo_export_path)
+                    print(f"Exported Live Photo video: {live_photo_filename}")
+                else:
+                    print(f"Live Photo video component not found for: {new_filename}")
 
         except Exception as e:
-            print(f"Failed to export {new_filename}: {e}")
+            print(f"Failed to export {new_filename}: {str(e)}")
 
 def animate_loading():
     # Simplified animation with same visual effect
