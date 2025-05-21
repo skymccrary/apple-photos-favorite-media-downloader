@@ -95,7 +95,7 @@ def animate_loading():
     dots = ['', '.', '..', '...']
     for _ in range(3):
         for d in dots:
-            print(f'\rSearching photos{d}', end='', flush=True)
+            print(f'\rSearching media in Apple Photos{d}', end='', flush=True)
             time.sleep(0.3)
 
 def main():
