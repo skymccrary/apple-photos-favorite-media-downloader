@@ -13,3 +13,4 @@ skymccrary | https://github.com/skymccrary
 - From macOS terminal, run: apple_photos_favorite_media_downloader.py
 - Input date range (for best results, limit results to shorter timeframe; e.g. 1 month).
 - You will find your downloaded media on your Desktop in a folder named "mm-dd-yyyy to mm-dd-yyyy".
+- Photos will be renamed when they are downloaded, with a naming convention that keeps them chronological for easy import into video editor.
