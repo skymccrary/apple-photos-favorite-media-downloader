@@ -1,7 +1,11 @@
 # Apple Photos Favorite Media Downloader 💙
 skymccrary | https://github.com/skymccrary
 
-1. Dependencies:
+# Description:
+Apple Photos Favorite Media Downloader 💙 automatically bulk downloads your favorited (hearted) photos and videos from your Apple Photos desktop application on macOS, within specified date range. Also includes Live Photos saved separately as both photos and videos.
+
+# How to use:
+1. Prepare dependencies:
 - macOS and Python 3 required
 - Ensure you have enough storage on your Mac, as targeted media in range not on local machine will be downloaded from Apple iCloud in Apple Photos and then copied locally as well.
 - Install osxphotos and tqdm with the following terminal command: *python3 -m pip install osxphotos tqdm*
