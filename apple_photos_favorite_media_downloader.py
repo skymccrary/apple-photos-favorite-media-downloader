@@ -89,6 +89,10 @@ def check_if_mirrored(original_path, edited_path):
 def check_if_mirrored_optimized(original_path, edited_path):
     """Optimized check if an edited image is mirrored - uses sampling"""
     try:
+        # Only check images, not videos
+        if not any(original_path.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.heic', '.tiff']):
+            return False
+            
         original = Image.open(original_path)
         edited = Image.open(edited_path)
         
@@ -119,28 +123,95 @@ def check_if_mirrored_optimized(original_path, edited_path):
     except Exception:
         return False
 
+def mirror_media(filepath, media_type, verbose=False):
+    """Mirror different types of media files"""
+    try:
+        filename = os.path.basename(filepath)
+        
+        # Handle images
+        if media_type in ['image', 'heic']:
+            img = Image.open(filepath)
+            mirrored = img.transpose(Image.FLIP_LEFT_RIGHT)
+            mirrored.save(filepath)
+            if verbose:
+                print(f"Mirrored image: {filename}")
+                
+        # Handle videos (including MOV files from Live Photos)
+        elif media_type == 'video' or filepath.lower().endswith(('.mov', '.mp4')):
+            # Create temp file for output
+            temp_output = filepath + '.temp.mp4'
+            
+            # Use ffmpeg to mirror video
+            cmd = [
+                'ffmpeg', '-i', filepath,
+                '-vf', 'hflip',  # Horizontal flip filter
+                '-c:a', 'copy',  # Copy audio without re-encoding
+                '-y',  # Overwrite output
+                temp_output
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                # Replace original with mirrored version
+                shutil.move(temp_output, filepath)
+                if verbose:
+                    print(f"Mirrored video: {filename}")
+            else:
+                if verbose:
+                    print(f"Failed to mirror video {filename}: {result.stderr}")
+                if os.path.exists(temp_output):
+                    os.remove(temp_output)
+                    
+    except Exception as e:
+        if verbose:
+            print(f"Error mirroring {filepath}: {e}")
+
 def mirror_selfie_if_needed(photo, filepath, verbose):
-    """Mirror selfie images only if they haven't already been mirrored"""
-    # Skip non-selfies immediately
+    """Mirror selfie media (images, videos, live photos) if not already mirrored"""
     if not photo.selfie:
         return
         
     try:
-        # Only check for mirroring if photo is edited
+        # Determine media type
+        media_type = photo.uti_original
+        if media_type:
+            media_type = media_type.lower()
+        
+        # Check if we should skip mirroring for edited photos
         if photo.edited and photo.path_original:
-            if check_if_mirrored_optimized(photo.path_original, filepath):
-                if verbose:
-                    print(f"Selfie already mirrored, skipping: {os.path.basename(filepath)}")
-                return
+            # Only check for images, videos can't easily be checked
+            if any(filepath.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.heic', '.tiff']):
+                if check_if_mirrored_optimized(photo.path_original, filepath):
+                    if verbose:
+                        print(f"Selfie already mirrored, skipping: {os.path.basename(filepath)}")
+                    return
         
-        # Mirror the image
-        img = Image.open(filepath)
-        mirrored = img.transpose(Image.FLIP_LEFT_RIGHT)
-        mirrored.save(filepath)
-        
-        if verbose:
-            print(f"Mirrored selfie: {os.path.basename(filepath)}")
+        # Mirror the media file
+        if photo.islive:
+            # Live Photo - need to handle both image and video components
+            mirror_media(filepath, 'image', verbose)
             
+            # Check for associated .mov file
+            base_name = os.path.splitext(filepath)[0]
+            possible_mov_files = [
+                base_name + '.mov',
+                base_name + '.MOV',
+                filepath.replace('.HEIC', '.MOV'),
+                filepath.replace('.heic', '.mov')
+            ]
+            
+            for mov_file in possible_mov_files:
+                if os.path.exists(mov_file):
+                    mirror_media(mov_file, 'video', verbose)
+                    break
+        else:
+            # Regular photo or video
+            if any(filepath.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.heic', '.tiff']):
+                mirror_media(filepath, 'image', verbose)
+            elif any(filepath.lower().endswith(ext) for ext in ['.mov', '.mp4', '.m4v']):
+                mirror_media(filepath, 'video', verbose)
+                
     except Exception as e:
         if verbose:
             print(f"Error processing {filepath}: {e}")
@@ -158,6 +229,13 @@ def download_hearted_media(output_folder, date_range):
 
     logging.info(f"Found {len(favorites)} favorited items in the specified date range.")
 
+    # Check if ffmpeg is installed for video mirroring
+    try:
+        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("Warning: ffmpeg not found. Video mirroring will not work.")
+        print("Install with: brew install ffmpeg")
+    
     # Create export command
     export_command = [
         'osxphotos', 'export', str(output_path),
@@ -166,6 +244,7 @@ def download_hearted_media(output_folder, date_range):
         '--cleanup',
         '--directory', '{created.year}/{created.month}',
         '--filename', '{original_name}',
+        '--live',  # Ensure Live Photos are exported properly
         '--post-function', f'{__file__}::mirror_selfie_if_needed'
     ]
 
