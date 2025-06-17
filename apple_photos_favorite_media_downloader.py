@@ -25,15 +25,16 @@ def validate_date(date_str):
 
 def get_date_range():
     # Prompt user for start and end dates and return datetime objects
-    logging.info("Enter date range for hearted photos/videos (mm-dd-yyyy). Start date is required, end date is optional.")
+    logging.info("Enter date range for hearted photos/videos (mm-dd-yyyy). Both dates are optional and will default to today's date.")
     # Select date range of hearted photos/videos to download
-    start_date_str = input("Start date (mm-dd-yyyy): ").strip()
+    start_date_str = input("Start date (mm-dd-yyyy, or press Enter to use today's date): ").strip()
     end_date_str = input("End date (mm-dd-yyyy, or press Enter to use today's date): ").strip()
 
+    # Handle start date - use today if no input provided
     if not start_date_str:
-        raise ValueError("Start date is required.")
-
-    start_date = validate_date(start_date_str)
+        start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        start_date = validate_date(start_date_str)
     
     # Handle end date - use today if no input provided
     if not end_date_str:
