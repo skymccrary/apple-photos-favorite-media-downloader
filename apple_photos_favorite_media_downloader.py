@@ -7,6 +7,10 @@ import sys
 import time
 import shutil
 import logging
+import subprocess
+import argparse
+from PIL import Image
+import numpy as np
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +53,98 @@ def get_date_range():
 
     return start_date, end_date
 
+def check_if_mirrored(original_path, edited_path):
+    """Check if an edited image is a mirrored version of the original"""
+    try:
+        # Load both images
+        original = Image.open(original_path)
+        edited = Image.open(edited_path)
+        
+        # Convert to RGB if necessary (to handle different modes)
+        if original.mode != 'RGB':
+            original = original.convert('RGB')
+        if edited.mode != 'RGB':
+            edited = edited.convert('RGB')
+        
+        # Convert to arrays
+        original_arr = np.array(original)
+        edited_arr = np.array(edited)
+        
+        # Check if dimensions match
+        if original_arr.shape != edited_arr.shape:
+            return False
+            
+        # Flip the original and compare
+        original_flipped = np.array(original.transpose(Image.FLIP_LEFT_RIGHT))
+        
+        # Calculate similarity (allowing for minor compression differences)
+        difference = np.mean(np.abs(edited_arr.astype(float) - original_flipped.astype(float)))
+        
+        # If difference is small, it's likely mirrored
+        return difference < 30  # Threshold for similarity
+        
+    except Exception:
+        return False
+
+def check_if_mirrored_optimized(original_path, edited_path):
+    """Optimized check if an edited image is mirrored - uses sampling"""
+    try:
+        original = Image.open(original_path)
+        edited = Image.open(edited_path)
+        
+        # Quick dimension check first
+        if original.size != edited.size:
+            return False
+        
+        # Sample instead of full image - resize to small size for comparison
+        sample_size = (200, 200)
+        original_small = original.resize(sample_size, Image.Resampling.LANCZOS)
+        edited_small = edited.resize(sample_size, Image.Resampling.LANCZOS)
+        
+        # Convert to RGB if necessary
+        if original_small.mode != 'RGB':
+            original_small = original_small.convert('RGB')
+        if edited_small.mode != 'RGB':
+            edited_small = edited_small.convert('RGB')
+        
+        # Compare smaller versions
+        original_arr = np.array(original_small)
+        edited_arr = np.array(edited_small)
+        original_flipped = np.array(original_small.transpose(Image.FLIP_LEFT_RIGHT))
+        
+        difference = np.mean(np.abs(edited_arr.astype(float) - original_flipped.astype(float)))
+        
+        return difference < 30
+        
+    except Exception:
+        return False
+
+def mirror_selfie_if_needed(photo, filepath, verbose):
+    """Mirror selfie images only if they haven't already been mirrored"""
+    # Skip non-selfies immediately
+    if not photo.selfie:
+        return
+        
+    try:
+        # Only check for mirroring if photo is edited
+        if photo.edited and photo.path_original:
+            if check_if_mirrored_optimized(photo.path_original, filepath):
+                if verbose:
+                    print(f"Selfie already mirrored, skipping: {os.path.basename(filepath)}")
+                return
+        
+        # Mirror the image
+        img = Image.open(filepath)
+        mirrored = img.transpose(Image.FLIP_LEFT_RIGHT)
+        mirrored.save(filepath)
+        
+        if verbose:
+            print(f"Mirrored selfie: {os.path.basename(filepath)}")
+            
+    except Exception as e:
+        if verbose:
+            print(f"Error processing {filepath}: {e}")
+
 def download_hearted_media(output_folder, date_range):
     output_path = Path(output_folder).expanduser()
     output_path.mkdir(parents=True, exist_ok=True)
@@ -61,6 +157,17 @@ def download_hearted_media(output_folder, date_range):
     favorites = sorted([p for p in photos_in_range if p.favorite], key=lambda x: x.date)
 
     logging.info(f"Found {len(favorites)} favorited items in the specified date range.")
+
+    # Create export command
+    export_command = [
+        'osxphotos', 'export', str(output_path),
+        '--favorite',
+        '--download-missing',
+        '--cleanup',
+        '--directory', '{created.year}/{created.month}',
+        '--filename', '{original_name}',
+        '--post-function', f'{__file__}::mirror_selfie_if_needed'
+    ]
 
     # Export each favorited item with progress bar
     for index, photo in enumerate(tqdm(favorites, desc="Progress"), start=1):
