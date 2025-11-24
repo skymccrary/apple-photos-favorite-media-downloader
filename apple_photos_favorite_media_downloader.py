@@ -68,35 +68,42 @@ def download_hearted_media(output_folder, date_range):
         try:
             # Get original extension
             _, ext = os.path.splitext(photo.original_filename)
-            # Create sequential filename with padded numbers and date range
-            new_filename = f"{index:03d}{date_suffix}{ext}"
-            
-            # Export the original photo/video
-            export_info = photo.export(
-                dest=str(output_path),
-                filename=new_filename,
-                live_photo=True,  # This ensures Live Photo components are exported
-                use_photos_export=True
-            )
-            logging.info(f"Exported image: {new_filename}")
+            base_name = f"{index:03d}{date_suffix}"
 
-            # Handle Live Photo video component
+            # Requested naming:
+            #   - Still image (HEIC) ends with 'b'
+            #   - Live Photo video (.mov) ends with 'a'
+            image_filename = f"{base_name}b{ext}"
+            live_video_filename = f"{base_name}a.mov"
+
+            # Export only the still image via Photos; we'll handle the video copy ourselves
+            export_results = photo.export(
+                dest=str(output_path),
+                filename=image_filename,
+                live_photo=False,
+                use_photos_export=True,
+            )
+
+            logging.info(
+                f"Exported image for index {index:03d}: {image_filename}"
+            )
+
+            # Ensure Live Photo video is present with the requested 'a' suffix
             if photo.live_photo:
-                # Get the video component path
                 video_path = photo.path_live_photo
                 if video_path and os.path.exists(video_path):
-                    # Create filename for Live Photo video
-                    live_photo_filename = f"{index:03d}{date_suffix}_live.mov"
-                    live_photo_export_path = output_path / live_photo_filename
-                    
-                    # Copy the Live Photo video component
-                    shutil.copy2(video_path, live_photo_export_path)
-                    logging.info(f"Exported Live Photo video: {live_photo_filename}")
+                    target_video_path = output_path / live_video_filename
+                    shutil.copy2(video_path, target_video_path)
+                    logging.info(
+                        f"Exported Live Photo video for index {index:03d}: {live_video_filename}"
+                    )
                 else:
-                    logging.warning(f"Live Photo video component not found for: {new_filename}")
+                    logging.warning(
+                        f"Live Photo video component not found for index {index:03d}"
+                    )
 
         except Exception as e:
-            logging.error(f"Failed to export {new_filename}: {str(e)}")
+            logging.error(f"Failed to export media for index {index:03d}: {str(e)}")
 
 def animate_loading():
     # Simplified animation with same visual effect
