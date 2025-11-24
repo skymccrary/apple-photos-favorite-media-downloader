@@ -1,20 +1,24 @@
 # Apple Photos Favorite Media Downloader 💙
 skymccrary | https://github.com/skymccrary
 
-# Description:
-Apple Photos Favorite Media Downloader 💙 automatically bulk downloads your favorited (hearted) photos and videos from your Apple Photos desktop application on macOS, within specified date range. Also includes Live Photos saved separately as both photos and videos.
+## Description
+Bulk-downloads favorited (hearted) items from the Apple Photos app on macOS for a chosen date range. Live Photos are saved as a still HEIC image and a separate .mov video.
 
-# How to use:
-1. Prepare dependencies:
-- macOS and Python 3 required
-- Ensure you have enough storage on your Mac, as targeted media in range not on local machine will be downloaded from Apple iCloud in Apple Photos and then copied locally as well.
-- Install osxphotos and tqdm with the following terminal command: *python3 -m pip install osxphotos tqdm*
+## Requirements
+- macOS with the Photos app and an existing Photos library
+- Python 3
+- Python packages: `osxphotos`, `tqdm`
 
-2. Prepare target media:
-- Favorite (heart 💙) pictures in your Apple Photos library from your iPhone or Mac; these are the pictures that will be downloaded.
 
-3. Run it:
-- From macOS terminal, run: apple_photos_favorite_media_downloader.py
-- Input date range (for best results, limit results to shorter timeframe; e.g. 1 month).
-- You will find your downloaded media on your Desktop in a folder named "mm-dd-yyyy to mm-dd-yyyy".
-- Photos will be renamed when they are downloaded, with a naming convention that keeps them chronological for easy import into video editor.
+How to run:
+
+1. Install dependencies via terminal:
+python3 -m pip install osxphotos tqdm
+
+2. open Photos app on a Mac
+
+3. Run script in terminal, Apple will prompt to Allow script to access photos (yes obviously).
+
+4. Insert a range for hearted media, recommend only 1 month at a time for best results.
+
+5. Media will be exported to your Desktop folder
