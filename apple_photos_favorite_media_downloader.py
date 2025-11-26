@@ -8,6 +8,7 @@ import time
 import shutil
 import logging
 import calendar
+import threading
 
 # Configure logging
 logging.basicConfig(
@@ -61,7 +62,7 @@ def get_date_range():
     
     return start_date, end_date
 
-def download_hearted_media(output_folder, date_range):
+def download_hearted_media(output_folder, date_range, stop_event=None):
     output_path = Path(output_folder).expanduser()
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -71,6 +72,8 @@ def download_hearted_media(output_folder, date_range):
     try:
         photosdb = osxphotos.PhotosDB()
     except Exception as e:
+        if stop_event:
+            stop_event.set()
         logging.error(f"Failed to open Photos database: {str(e)}")
         logging.error("This may be due to macOS version compatibility issues with osxphotos.")
         logging.error("Try updating osxphotos: pip3 install --upgrade osxphotos")
@@ -78,6 +81,12 @@ def download_hearted_media(output_folder, date_range):
     
     photos_in_range = photosdb.photos(from_date=date_range[0], to_date=date_range[1])
     favorites = sorted([p for p in photos_in_range if p.favorite], key=lambda x: x.date)
+
+    # Stop the animation once we have the photos loaded
+    if stop_event:
+        stop_event.set()
+        time.sleep(0.4)  # Give animation time to complete current cycle
+        print('\r' + ' ' * 80 + '\r', end='', flush=True)  # Clear the animation line
 
     logging.info(f"Found {len(favorites)} favorited items in the specified date range.")
 
@@ -128,7 +137,7 @@ def animate_loading():
     dots = ['', '.', '..', '...']
     for _ in range(3):
         for d in dots:
-            print(f'\rSearching media in Apple Photos, please wait{d}', end='', flush=True)
+            print(f'\rSearching media in Apple Photos{d}', end='', flush=True)
             time.sleep(0.3)
 
 def main():
@@ -143,9 +152,24 @@ def main():
         animate_loading()
         print('\n')
         
-        logging.info(f"Exporting <3'd media to {output_folder}")
-        download_hearted_media(output_folder, date_range)
-        logging.info("Export complete.")
+        # Start continuous animation in background thread
+        stop_animation = threading.Event()
+        
+        def continuous_animation():
+            dots = ['', '.', '..', '...']
+            while not stop_animation.is_set():
+                for d in dots:
+                    if stop_animation.is_set():
+                        break
+                    print(f"\rExporting <3'd media to {output_folder}, please wait{d}", end='', flush=True)
+                    time.sleep(0.3)
+        
+        animation_thread = threading.Thread(target=continuous_animation, daemon=True)
+        animation_thread.start()
+        
+        download_hearted_media(output_folder, date_range, stop_animation)
+        animation_thread.join(timeout=1)  # Wait for animation thread to finish
+        logging.info("Export complete.\nDownloaded media is located on your Desktop.")
         
     except ValueError as e:
         logging.error(f"Error: {e}")
