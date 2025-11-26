@@ -11,14 +11,13 @@ Bulk-downloads favorited (hearted) items from the Apple Photos app on macOS for 
 
 
 How to run:
+1. Save this code on your Desktop and run the script in Terminal (from VS Code terminal, recommended)
 
-1. Install dependencies via terminal:
+2. Install dependencies via terminal:
 python3 -m pip install osxphotos tqdm
 
-2. open Photos app on a Mac
+3. Run script in VS Code terminal, Apple will prompt to Allow script to access photos (yes obviously), and will open the Photos app on MacOS.
 
-3. Run script in terminal, Apple will prompt to Allow script to access photos (yes obviously).
-
-4. Insert a range for hearted media, recommend only 1 month at a time for best results.
+4. Input a month-year to pull all the <3'd media from that month. Ex: november-2025
 
 5. Media will be exported to your Desktop folder

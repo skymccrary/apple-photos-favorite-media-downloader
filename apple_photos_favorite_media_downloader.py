@@ -169,7 +169,11 @@ def main():
         
         download_hearted_media(output_folder, date_range, stop_animation)
         animation_thread.join(timeout=1)  # Wait for animation thread to finish
-        logging.info("Export complete.\nDownloaded media is located on your Desktop.")
+        
+        # Expand the output folder path to show the full location
+        expanded_path = Path(output_folder).expanduser()
+        month_year_display = date_range[0].strftime('%B-%Y')
+        logging.info(f"Export complete.\nDownloaded media from {month_year_display} is located in {expanded_path}")
         
     except ValueError as e:
         logging.error(f"Error: {e}")
