@@ -7,6 +7,7 @@ import sys
 import time
 import shutil
 import logging
+import calendar
 
 # Configure logging
 logging.basicConfig(
@@ -14,40 +15,50 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-def validate_date(date_str):
-    # Validate date string in mm-dd-yyyy format and return datetime object
+def validate_month_year(month_year_str):
+    # Validate month-year string and return datetime objects for start and end of month
     try:
-        date_obj = datetime.strptime(date_str, "%m-%d-%Y")
-        # Return date with time set to midnight (start of day)
-        return date_obj.replace(hour=0, minute=0, second=0, microsecond=0)
-    except ValueError:
-        raise ValueError("Date must be in mm-dd-yyyy format (e.g., 04-30-2025)")
+        # Parse input like "september-2023" or "September-2023"
+        parts = month_year_str.lower().split('-')
+        if len(parts) != 2:
+            raise ValueError("Invalid format")
+        
+        month_name, year_str = parts
+        year = int(year_str)
+        
+        # Convert month name to month number
+        month_names = {month.lower(): idx for idx, month in enumerate(calendar.month_name) if month}
+        if month_name not in month_names:
+            raise ValueError("Invalid month name")
+        
+        month = month_names[month_name]
+        
+        # Get first day of month at midnight
+        start_date = datetime(year, month, 1, 0, 0, 0, 0)
+        
+        # Get last day of month at end of day
+        last_day = calendar.monthrange(year, month)[1]
+        end_date = datetime(year, month, last_day, 23, 59, 59, 999999)
+        
+        return start_date, end_date
+    except (ValueError, IndexError):
+        raise ValueError("Format must be month-year (e.g., september-2023, January-2024)")
 
 def get_date_range():
-    # Prompt user for start and end dates and return datetime objects
-    logging.info("Enter date range for hearted photos/videos (mm-dd-yyyy). Both dates are optional and will default to today's date.")
-    # Select date range of hearted photos/videos to download
-    start_date_str = input("Start date (mm-dd-yyyy, or press Enter to use today's date): ").strip()
-    end_date_str = input("End date (mm-dd-yyyy, or press Enter to use today's date): ").strip()
-
-    # Handle start date - use today if no input provided
-    if not start_date_str:
-        start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    else:
-        start_date = validate_date(start_date_str)
+    # Prompt user for month and year and return datetime objects for the full month
+    logging.info("Enter the month-year for hearted photos/videos to download.")
+    logging.info("Format: month-year (e.g., september-2023, January-2024)")
     
-    # Handle end date - use today if no input provided
-    if not end_date_str:
-        end_date = datetime.now()
-    else:
-        end_date = validate_date(end_date_str)
+    month_year_str = input("<3 media downloader is running!\ninput month-year (ex: november-2025): ").strip()
     
-    # Set end date to end of day (23:59:59.999999)
-    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-
-    if start_date > end_date:
-        raise ValueError("Start date must be before or equal to end date.")
-
+    if not month_year_str:
+        raise ValueError("Month and year are required.")
+    
+    start_date, end_date = validate_month_year(month_year_str)
+    
+    logging.info(f"Processing full month: {start_date.strftime('%B %Y')}")
+    logging.info(f"Date range: {start_date.strftime('%m-%d-%Y')} to {end_date.strftime('%m-%d-%Y')}")
+    
     return start_date, end_date
 
 def download_hearted_media(output_folder, date_range):
@@ -117,17 +128,16 @@ def animate_loading():
     dots = ['', '.', '..', '...']
     for _ in range(3):
         for d in dots:
-            print(f'\rSearching media in Apple Photos{d}', end='', flush=True)
+            print(f'\rSearching media in Apple Photos, please wait{d}', end='', flush=True)
             time.sleep(0.3)
 
 def main():
     try:
         date_range = get_date_range()
         
-        # Simplified output folder creation
-        output_folder = "~/Desktop/{} to {}".format(
-            date_range[0].strftime("%m-%d-%Y"),
-            "present" if not date_range[1] else date_range[1].strftime("%m-%d-%Y")
+        # Create output folder with month-year format
+        output_folder = "~/Desktop/{}".format(
+            date_range[0].strftime("%B-%Y")
         )
         
         animate_loading()
