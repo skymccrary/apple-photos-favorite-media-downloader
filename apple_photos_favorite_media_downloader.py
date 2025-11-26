@@ -57,7 +57,14 @@ def download_hearted_media(output_folder, date_range):
     # Format date suffix once, reuse throughout
     date_suffix = f"_{date_range[0].strftime('%m%Y')}-{date_range[1].strftime('%m%Y')}"
 
-    photosdb = osxphotos.PhotosDB()
+    try:
+        photosdb = osxphotos.PhotosDB()
+    except Exception as e:
+        logging.error(f"Failed to open Photos database: {str(e)}")
+        logging.error("This may be due to macOS version compatibility issues with osxphotos.")
+        logging.error("Try updating osxphotos: pip3 install --upgrade osxphotos")
+        sys.exit(1)
+    
     photos_in_range = photosdb.photos(from_date=date_range[0], to_date=date_range[1])
     favorites = sorted([p for p in photos_in_range if p.favorite], key=lambda x: x.date)
 
