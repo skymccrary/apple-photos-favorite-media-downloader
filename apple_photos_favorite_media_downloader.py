@@ -60,9 +60,20 @@ def get_date_range():
     logging.info(f"Processing full month: {start_date.strftime('%B %Y')}")
     logging.info(f"Date range: {start_date.strftime('%m-%d-%Y')} to {end_date.strftime('%m-%d-%Y')}")
     
-    return start_date, end_date
+    # Ask about excluding still images for Live Photos
+    exclude_stills_input = input("\nExclude still images if photo is Live, Y/N? ").strip().upper()
+    while exclude_stills_input not in ['Y', 'N']:
+        exclude_stills_input = input("Please enter Y or N: ").strip().upper()
+    
+    exclude_stills = (exclude_stills_input == 'Y')
+    if exclude_stills:
+        logging.info("Live Photos: Will download only video component (still image excluded)")
+    else:
+        logging.info("Live Photos: Will download both video and still image")
+    
+    return start_date, end_date, exclude_stills
 
-def download_hearted_media(output_folder, date_range, stop_event=None):
+def download_hearted_media(output_folder, date_range, exclude_stills=False, stop_event=None):
     output_path = Path(output_folder).expanduser()
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -103,17 +114,21 @@ def download_hearted_media(output_folder, date_range, stop_event=None):
             image_filename = f"{base_name}b{ext}"
             live_video_filename = f"{base_name}a.mov"
 
-            # Export only the still image via Photos; we'll handle the video copy ourselves
-            export_results = photo.export(
-                dest=str(output_path),
-                filename=image_filename,
-                live_photo=False,
-                use_photos_export=True,
-            )
+            # Determine if we should export the still image
+            should_export_still = not (exclude_stills and photo.live_photo)
 
-            logging.info(
-                f"Exported image for index {index:03d}: {image_filename}"
-            )
+            # Export the still image unless it's a Live Photo and we're excluding stills
+            if should_export_still:
+                export_results = photo.export(
+                    dest=str(output_path),
+                    filename=image_filename,
+                    live_photo=False,
+                    use_photos_export=True,
+                )
+
+                logging.info(
+                    f"Exported image for index {index:03d}: {image_filename}"
+                )
 
             # Ensure Live Photo video is present with the requested 'a' suffix
             if photo.live_photo:
@@ -142,7 +157,8 @@ def animate_loading():
 
 def main():
     try:
-        date_range = get_date_range()
+        start_date, end_date, exclude_stills = get_date_range()
+        date_range = (start_date, end_date)
         
         # Create output folder with month-year format
         output_folder = "~/Desktop/{}".format(
@@ -167,7 +183,7 @@ def main():
         animation_thread = threading.Thread(target=continuous_animation, daemon=True)
         animation_thread.start()
         
-        download_hearted_media(output_folder, date_range, stop_animation)
+        download_hearted_media(output_folder, date_range, exclude_stills, stop_animation)
         animation_thread.join(timeout=1)  # Wait for animation thread to finish
         
         # Expand the output folder path to show the full location
